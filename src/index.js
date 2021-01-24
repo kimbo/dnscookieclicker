@@ -43,10 +43,10 @@ class MyGame extends Phaser.Scene
         cookie.setInteractive();
         cookie.addListener('pointerup', (e) => {
             emitter.emitParticleAt(e.x, e.y);
-            const elem = document.createElement('li');
-            elem.textContent = this.randomName();
             // TODO: actually send query here
             // TODO: log an answer from a resolver here
+            const elem = document.createElement('li');
+            elem.textContent = this.randomName();
             elem.style.color = '#ffffff';
             queryLog.append(elem);
             queryLog.lastChild.scrollIntoView();
