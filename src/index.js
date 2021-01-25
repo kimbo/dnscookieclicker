@@ -1,17 +1,19 @@
 import Phaser from 'phaser';
 import * as doh from 'dohjs';
 import {domains} from './names';
+import {responseToLog} from './logger';
 
 import myParticle from './assets/muzzleflash2.png'
 // <a href='https://pngtree.com/so/dessert-clipart'>dessert clipart png from pngtree.com</a>
-import cookieImg from './assets/cookie-2.png';
+import cookieImg from './assets/cookie-simple.svg';
 
 class MyGame extends Phaser.Scene
 {
-    constructor (_domains)
+    constructor (_domains, _resolver)
     {
         super();
         this._domains = _domains;
+        this._resolver = _resolver;
     }
 
     randomName() {
@@ -43,13 +45,36 @@ class MyGame extends Phaser.Scene
         cookie.setInteractive();
         cookie.addListener('pointerup', (e) => {
             emitter.emitParticleAt(e.x, e.y);
-            // TODO: actually send query here
-            // TODO: log an answer from a resolver here
-            const elem = document.createElement('li');
-            elem.textContent = this.randomName();
-            elem.style.color = '#ffffff';
-            queryLog.append(elem);
-            queryLog.lastChild.scrollIntoView();
+
+            const name = this.randomName();
+            const pkt = doh.makeQuery(name, 'A');
+            pkt.additionals = {
+                type: 'OPT',
+                name: '.',
+                udpPayloadSize: 4096,
+                options: [
+                    {
+                        code: 10,
+                            data: Buffer.of('deadbeefdeadbeef', 'hex')
+                    },
+                ]
+            }
+            doh.sendDohMsg(pkt, 'https://dns.google/dns-query', 'GET')
+                .then(handleResponse)
+                .catch(handleError);
+
+            function handleError(err) {
+                console.error(err);
+            }
+
+            function handleResponse(response) {
+                // TODO: log an answer from a resolver here
+                const elem = document.createElement('li');
+                elem.textContent = responseToLog(response);
+                elem.style.color = '#00ff33';
+                queryLog.append(elem);
+                queryLog.lastChild.scrollIntoView();
+            }
         });
 
         const particles = this.add.particles('my-particle');
@@ -62,12 +87,14 @@ class MyGame extends Phaser.Scene
     }
 }
 
+const resolver = new doh.DohResolver('https://dns.google/dns-query');
+
 const config = {
     type: Phaser.AUTO,
     parent: 'phaser-example',
     width: 800,
     height: 700,
-    scene: new MyGame(domains),
+    scene: new MyGame(domains, resolver),
     physics: {
         default: 'arcade'
     },
